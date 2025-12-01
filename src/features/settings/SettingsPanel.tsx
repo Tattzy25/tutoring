@@ -13,7 +13,7 @@ interface SettingsPanelProps {
   setApiProvider: (v: 'openai' | 'groq' | 'claude') => void
   language: string
   setLanguage: (v: string) => void
-  languages: { value: string; label: string }[]
+  languages: { value: string; label: string; code?: string }[]
   mode: 'casual' | 'structured'
   setMode: (v: 'casual' | 'structured') => void
   openaiModel: string
@@ -25,14 +25,16 @@ interface SettingsPanelProps {
   systemPrompt: string
   setSystemPrompt: (v: string) => void
   errorMsg: string | null
+  logs?: string[]
 }
 
-export default function SettingsPanel({ apiProvider, setApiProvider, language, setLanguage, languages, mode, setMode, openaiModel, setOpenaiModel, groqModel, setGroqModel, claudeModel, setClaudeModel, systemPrompt, setSystemPrompt, errorMsg }: SettingsPanelProps) {
-  const base = import.meta.env.VITE_AUDIO_API_BASE || import.meta.env.VITE_AUDIO_API_BASE_LOCAL || 'http://localhost:3001'
+export default function SettingsPanel({ apiProvider, setApiProvider, language, setLanguage, languages, mode, setMode, openaiModel, setOpenaiModel, groqModel, setGroqModel, claudeModel, setClaudeModel, systemPrompt, setSystemPrompt, errorMsg, logs }: SettingsPanelProps) {
+  const base = import.meta.env.VITE_AUDIO_API_BASE || import.meta.env.VITE_AUDIO_API_BASE_LOCAL
   const [health, setHealth] = useState<string[]>([])
 
   const checkHealth = async () => {
     const results: string[] = []
+    if (!base) { setHealth(['audio_base:not_configured']); return }
     try { const r = await fetch(`${base}/voices`); results.push(`voices:${r.status}`) } catch { results.push('voices:error') }
     try { const r = await fetch(`${base}/languages`); results.push(`languages:${r.status}`) } catch { results.push('languages:error') }
     setHealth(results)
@@ -107,6 +109,7 @@ export default function SettingsPanel({ apiProvider, setApiProvider, language, s
           <ScrollArea className="h-24 border rounded-md p-2 text-sm">
             {health.map((h, i) => (<div key={i}>{h}</div>))}
             {errorMsg ? (<div className="text-destructive">{errorMsg}</div>) : null}
+            {Array.isArray(logs) ? logs.slice(-10).map((l, i) => (<div key={`log-${i}`}>{l}</div>)) : null}
           </ScrollArea>
         </CardContent>
       </Card>

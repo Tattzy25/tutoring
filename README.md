@@ -1,73 +1,119 @@
-# React + TypeScript + Vite
+# Language Learning Tutor
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Interactive language learning web app with speech-to-text, text-to-speech, AI tutoring, goals tracking, progress visualization, and journaling. Built with Vite + React + TypeScript and shadcn/ui components.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Conversation with AI tutor using configurable providers (`openai`, `groq`, `claude`)
+- Speech-to-Text (STT) and Text-to-Speech (TTS) via an Audio API
+- Settings panel for provider, models, language, mode, and system prompt
+- Goals management, progress charts, and journaling
+- Feedback analysis with common errors aggregation
+- Responsive, accessible UI using shadcn/ui and Tailwind CSS
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- `React` + `TypeScript` with `Vite`
+- `shadcn/ui` component library
+- Providers: `openai`, `groq`, `anthropic`
 
-## Expanding the ESLint configuration
+## Quick Start
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+1. Install dependencies
+   
+   ```bash
+   npm install
+   ```
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+2. Configure environment
+   
+   - Copy `.env.example` to `.env` and fill values (do NOT commit `.env`).
+   - Required variables:
+     - `VITE_AUDIO_API_BASE` or `VITE_AUDIO_API_BASE_LOCAL`
+     - `VITE_OPENAI_API_KEY` (optional if using OpenAI)
+     - `VITE_GROQ_API_KEY` (optional if using Groq)
+     - `VITE_ANTHROPIC_API_KEY` (optional if using Anthropic)
+     - `VITE_TTS_DEFAULT_VOICE` (optional)
+     - `VITE_LANGUAGES` (optional comma-separated list)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+3. Run the app
+   
+   ```bash
+   npm run dev
+   ```
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+4. Build and preview
+   
+   ```bash
+   npm run build
+   npm run preview
+   ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Environment Variables
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- `VITE_AUDIO_API_BASE`: Primary Audio API base URL, e.g. `https://your-audio-api.example.com`
+- `VITE_AUDIO_API_BASE_LOCAL`: Local fallback, e.g. `http://localhost:3001`
+- `VITE_OPENAI_API_KEY`, `VITE_GROQ_API_KEY`, `VITE_ANTHROPIC_API_KEY`: Provider API keys
+- `VITE_TTS_DEFAULT_VOICE`: Default TTS voice name
+- `VITE_LANGUAGES`: Optional language list override, e.g. `english,spanish,french`
+- `VITE_SYSTEM_PROMPT`: Optional system prompt string
+- `VITE_OPENAI_MODEL`, `VITE_GROQ_MODEL`, `VITE_ANTHROPIC_MODEL`: Production model identifiers
+- `VITE_TTS_MODEL`: Production TTS model id
+- `VITE_TTS_FORMAT`: Production audio format (e.g., `wav`)
+- `VITE_STT_MODEL`: Production STT model id
+- `VITE_LOG_ENDPOINT`: Optional log ingestion endpoint
+- `VITE_METRICS_ENDPOINT`: Optional usage metrics endpoint
+- `VITE_ANTHROPIC_MAX_TOKENS`: Required for Anthropic SDK requests
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+`.env` is ignored by Git; only `.env.example` is tracked. Never commit real keys.
+
+## Audio API Endpoints
+
+The frontend expects an Audio API with the following endpoints:
+
+- `GET /voices` → `string[]` of available voices
+- `GET /languages` → `string[]` of available languages
+- `POST /tts` → body: `{ model: string, voice: string, input: string, response_format: 'wav' }` returns WAV audio
+- `POST /transcribe` → multipart form `{ file, model, language }` returns `{ text: string }`
+
+Models and formats are provided via environment configuration.
+
+## AI Providers
+
+- Providers supported: `openai`, `groq`, `claude`
+- Models are required and must be set via Settings or env
+- System prompt can be set in Settings or via env
+
+## Scripts
+
+- `npm run dev` — start local dev server
+- `npm run build` — production build
+- `npm run preview` — preview built app
+
+## Security
+
+- Do not hardcode secrets or API keys anywhere in the source
+- Use environment variables via `import.meta.env.*`
+- `.gitignore` ignores `.env` and `.env.*`; only `.env.example` is tracked
+- If a secret was accidentally committed, scrub history before pushing (GitHub push protection will block)
+ - Do not expose provider keys in the browser; use a backend proxy for provider calls in production
+
+## Troubleshooting
+
+- Detached HEAD: you are on a commit, not a branch. Run `git switch main` or `git switch -c main`.
+- Push protection blocked: remove secrets from commits and rewrite history before pushing.
+- Audio API unreachable: verify `VITE_AUDIO_API_BASE` or `VITE_AUDIO_API_BASE_LOCAL` and health check in Settings.
+ - Missing models: set `VITE_OPENAI_MODEL`, `VITE_GROQ_MODEL`, `VITE_ANTHROPIC_MODEL` or configure via Settings.
+
+## Project Structure (selected)
+
+- `src/App.tsx` — main app composition
+- `src/features/` — UI feature panels (header, settings, conversation, feedback, goals, progress, journal)
+- `src/lib/audio/` — `tts.ts`, `stt.ts` for audio integration
+- `src/lib/providers/` — AI provider clients and chat/analysis helpers
+- `src/components/ui/` — shadcn/ui components
+
+## Contributing
+
+- Fork the repo, create a feature branch, and open a PR when ready.
+- Ensure you never commit `.env` or real secrets.
