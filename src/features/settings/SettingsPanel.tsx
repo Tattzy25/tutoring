@@ -29,7 +29,7 @@ interface SettingsPanelProps {
 }
 
 export default function SettingsPanel({ apiProvider, setApiProvider, language, setLanguage, languages, mode, setMode, openaiModel, setOpenaiModel, groqModel, setGroqModel, systemPrompt, setSystemPrompt, errorMsg, logs, theme, setTheme }: SettingsPanelProps) {
-  const base = import.meta.env.VITE_AUDIO_API_BASE || import.meta.env.VITE_AUDIO_API_BASE_LOCAL
+  const base = import.meta.env.VITE_AUDIO_API_BASE
   const [health, setHealth] = useState<string[]>([])
 
   const checkHealth = async () => {

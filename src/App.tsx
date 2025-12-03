@@ -36,13 +36,6 @@ export default function LanguageTutor() {
   const [ttsVoice] = useLocalStorageState('ttsVoice', import.meta.env.VITE_TTS_DEFAULT_VOICE || '')
   const [openaiModel, setOpenaiModel] = useLocalStorageState('openaiModel', import.meta.env.VITE_OPENAI_MODEL || '')
   const [groqModel, setGroqModel] = useLocalStorageState('groqModel', import.meta.env.VITE_GROQ_MODEL || '')
-  const [theme, setTheme] = useLocalStorageState('theme', {
-    background: '#000000',
-    primary: '#ffffff',
-    accent: '#ffff00',
-    text: '#ffffff',
-    borderRadius: '8px'
-  })
   const [isDark, setIsDark] = useLocalStorageState('isDark', true)
 
   const lightTheme = {
@@ -60,6 +53,8 @@ export default function LanguageTutor() {
     text: '#ffffff',
     borderRadius: '8px'
   }
+
+  const [theme, setTheme] = useLocalStorageState('theme', isDark ? darkTheme : lightTheme)
 
   const toggleTheme = () => {
     setIsDark(!isDark)
@@ -135,12 +130,12 @@ Output: The correct form is "He went to school." "Went" is the past tense of "go
   }, [languages])
 
   useEffect(() => {
-    document.documentElement.style.setProperty('--background', theme.background)
-    document.documentElement.style.setProperty('--foreground', theme.text)
-    document.documentElement.style.setProperty('--primary', theme.primary)
-    document.documentElement.style.setProperty('--accent', theme.accent)
-    document.documentElement.style.setProperty('--radius', theme.borderRadius)
-  }, [theme])
+    if (isDark) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  }, [isDark])
 
   const startInterruptionMonitor = (onInterrupt: () => void) => {
     let monitoring = true
@@ -405,7 +400,7 @@ Output: The correct form is "He went to school." "Went" is the past tense of "go
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <HeaderBar proficiency={proficiency} isDark={isDark} toggleTheme={toggleTheme} openSettings={() => setActiveTab('settings')} />
-      <main className="flex-1 p-4 flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 max-w-7xl mx-auto w-full">
+      <main className="flex-1 p-2 sm:p-4 flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 max-w-7xl mx-auto w-full">
         <Conversation messages={messages} input={input} setInput={setInput} onSend={sendMessage} isRecording={isRecording} onToggleMic={isRecording ? () => stopRecording(true) : () => startRecording(() => stopRecording(false))} isSending={isSending} scrollAreaRef={scrollAreaRef} />
         <FeedbackPanel feedback={feedback} commonErrors={commonErrors} />
       </main>

@@ -12,7 +12,7 @@ interface HeaderBarProps {
 import { Button } from '@/components/ui/button'
 export default function HeaderBar({ proficiency, isDark, toggleTheme, openSettings }: HeaderBarProps) {
   return (
-    <header className="p-4 border-b">
+    <header className="p-2 sm:p-4 border-b">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <h1 className="text-2xl font-bold">Language Learning Tutor</h1>
         <div className="flex items-center space-x-4">

@@ -29,12 +29,14 @@ export default function Conversation({ messages, input, setInput, onSend, isReco
             </div>
           ))}
         </ScrollArea>
-        <div className="flex mt-4">
+        <div className="flex flex-col sm:flex-row mt-4 gap-2">
           <Textarea value={input} onChange={e => setInput(e.target.value)} placeholder="Type your message..." className="flex-1" onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend(input) } }} />
-          <Button onClick={() => onSend(input)} className="ml-2" aria-label="Send message" disabled={isSending || !input.trim()}>Send</Button>
-          <Button onClick={onToggleMic} variant="outline" className="ml-2" aria-label="Toggle microphone" disabled={isSending}>
-            {isRecording ? 'Stop' : 'Mic'}
-          </Button>
+          <div className="flex gap-2 sm:flex-shrink-0">
+            <Button onClick={() => onSend(input)} aria-label="Send message" disabled={isSending || !input.trim()}>Send</Button>
+            <Button onClick={onToggleMic} variant="outline" aria-label="Toggle microphone" disabled={isSending}>
+              {isRecording ? 'Stop' : 'Mic'}
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
