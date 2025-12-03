@@ -1,14 +1,25 @@
+import Groq from 'groq-sdk'
+
+const groq = new Groq({
+  apiKey: import.meta.env.VITE_GROQ_API_KEY,
+  dangerouslyAllowBrowser: true, // Since this is a client-side app
+})
+
 export async function transcribeBlob(audioBlob: Blob, languageCode: string) {
-  const base = import.meta.env.VITE_AUDIO_API_BASE || import.meta.env.VITE_AUDIO_API_BASE_LOCAL
-  if (!base) throw new Error('Audio API base not configured')
-  const model = import.meta.env.VITE_STT_MODEL
-  if (!model) throw new Error('STT model not configured')
-  const form = new FormData()
-  form.append('file', audioBlob, 'audio.wav')
-  form.append('model', model)
-  form.append('language', languageCode || 'en')
-  const res = await fetch(`${base}/transcribe`, { method: 'POST', body: form })
-  if (!res.ok) throw new Error('Transcription request failed')
-  const data = await res.json()
-  return data.text as string
+  if (!import.meta.env.VITE_GROQ_API_KEY) {
+    throw new Error('Groq API key not configured')
+  }
+
+  // Convert Blob to File for Groq SDK
+  const audioFile = new File([audioBlob], 'audio.wav', { type: 'audio/wav' })
+
+  const transcription = await groq.audio.transcriptions.create({
+    file: audioFile,
+    model: 'whisper-large-v3',
+    language: languageCode || 'en',
+    response_format: 'json',
+    temperature: 0.0,
+  })
+
+  return transcription.text
 }

@@ -8,7 +8,7 @@ export interface JournalEntry {
   summary: string
 }
 export type Mode = 'casual' | 'structured'
-export type ApiProvider = 'openai' | 'groq' | 'claude'
+export type ApiProvider = 'openai' | 'groq'
 export interface ProgressState {
   vocabulary: number
   grammar: number

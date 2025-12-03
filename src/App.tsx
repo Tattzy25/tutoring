@@ -13,6 +13,7 @@ import { transcribeBlob } from '@/lib/audio/stt'
 import { generateResponse as generateResponseAPI, analyzeFeedback as analyzeFeedbackAPI, detectProficiency as detectProficiencyAPI, suggestGoals as suggestGoalsAPI } from '@/lib/providers/chat'
 import type { Message, JournalEntry } from '@/lib/types'
 import { matchLanguage } from '@/lib/i18n'
+import { postLog } from '@/lib/logger'
 
 // removed browser injection fallback
 
@@ -31,17 +32,37 @@ export default function LanguageTutor() {
   const [proficiency, setProficiency] = useLocalStorageState('proficiency', 'beginner')
   const [isRecording, setIsRecording] = useState(false)
   const [isTTSOn, setIsTTSOn] = useState(true)
-  const [apiProvider, setApiProvider] = useLocalStorageState<'openai' | 'groq' | 'claude'>('apiProvider', 'openai')
+  const [apiProvider, setApiProvider] = useLocalStorageState<'openai' | 'groq'>('apiProvider', 'openai')
   const [ttsVoice, setTtsVoice] = useLocalStorageState('ttsVoice', import.meta.env.VITE_TTS_DEFAULT_VOICE || '')
   const [voices, setVoices] = useState<string[]>([])
   const [openaiModel, setOpenaiModel] = useLocalStorageState('openaiModel', import.meta.env.VITE_OPENAI_MODEL || '')
   const [groqModel, setGroqModel] = useLocalStorageState('groqModel', import.meta.env.VITE_GROQ_MODEL || '')
-  const [claudeModel, setClaudeModel] = useLocalStorageState('claudeModel', import.meta.env.VITE_ANTHROPIC_MODEL || '')
-  const [systemPrompt, setSystemPrompt] = useLocalStorageState('systemPrompt', import.meta.env.VITE_SYSTEM_PROMPT || '')
+  
+  const [systemPrompt, setSystemPrompt] = useLocalStorageState('systemPrompt', import.meta.env.VITE_SYSTEM_PROMPT || `You are a helpful language tutor. When responding to learners' questions or content, provide explanations and guidance that are concise, accurate, and easy to understand.
+
+For each response:
+- First, think step-by-step to understand the learner's main question and any possible confusion.
+- Then, offer a brief, clear explanation or answer, using simple language appropriate for the learner's level.
+- Use examples or analogies only when necessary for clarification.
+- Avoid unnecessary details or overly technical language.
+- If the learner makes a mistake, gently correct it and explain why.
+
+Output Format:
+- Replies should be short (1-3 sentences), in plain text, and directly address the learner's query or correction.
+- If clarification is needed, ask a concise follow-up question.
+
+Example 1
+Input: What's the difference between "affect" and "effect"?
+Output: "Affect" is usually a verb meaning to influence, while "effect" is usually a noun meaning the result of something. For example, "The weather can affect your mood," and "The weather has an effect on your mood."
+
+Example 2
+Input: He goed to school.
+Output: The correct form is "He went to school." "Went" is the past tense of "go."`) 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<BlobPart[]>([])
   const recordingMimeTypeRef = useRef<string>('audio/webm')
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null)
   const [commonErrors, setCommonErrors] = useState<Record<string, number>>({})
   const [isSending, setIsSending] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -59,45 +80,31 @@ export default function LanguageTutor() {
   }, [messages])
 
   const [languages, setLanguages] = useState<{ value: string; label: string; code?: string }[]>([])
+  const logEvent = async (message: string) => {
+    const entry = `[${new Date().toISOString()}] ${message}`
+    setLogs(prev => [...prev, entry])
+    const endpoint = import.meta.env.VITE_LOG_ENDPOINT || ''
+    if (endpoint) { try { await postLog(endpoint, entry) } catch {} }
+  }
 
   useEffect(() => {
-    const base = import.meta.env.VITE_AUDIO_API_BASE || import.meta.env.VITE_AUDIO_API_BASE_LOCAL
-    if (!base) { setErrorMsg('Audio API base not configured'); setLogs(prev => [...prev, `[${new Date().toISOString()}] audio_base:not_configured`]); return }
-    ;(async () => {
-      try {
-        const res = await fetch(`${base}/voices`)
-        if (res.ok) {
-          const data: string[] = await res.json()
-          setVoices(data)
-          if (!ttsVoice && data.length) setTtsVoice(data[0])
-        } else {
-          setLogs(prev => [...prev, `[${new Date().toISOString()}] voices:${res.status}`])
-        }
-      } catch { setLogs(prev => [...prev, `[${new Date().toISOString()}] voices:error`]) }
-    })()
-    ;(async () => {
-      const envList = (import.meta.env.VITE_LANGUAGES || '').split(',').map((s: string) => s.trim()).filter(Boolean)
-      if (envList.length) {
-        setLanguages(envList.map((v: string) => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) })))
-        return
-      }
-      try {
-        const res = await fetch(`${base}/languages`)
-        if (res.ok) {
-          const data = await res.json()
-          if (Array.isArray(data) && typeof data[0] === 'string') {
-            setLanguages((data as string[]).map((v) => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) })))
-          } else if (Array.isArray(data)) {
-            setLanguages((data as { name?: string; value?: string; code?: string }[]).map((item) => {
-              const name = (item.name || item.value || '') as string
-              return { value: name, label: name.charAt(0).toUpperCase() + name.slice(1), code: item.code }
-            }))
-          }
-        } else {
-          setLogs(prev => [...prev, `[${new Date().toISOString()}] languages:${res.status}`])
-        }
-      } catch { setLogs(prev => [...prev, `[${new Date().toISOString()}] languages:error`]) }
-    })()
+    // Set hardcoded voices for Groq playai-tts
+    const groqVoices = [
+      'Arista-PlayAI', 'Atlas-PlayAI', 'Basil-PlayAI', 'Briggs-PlayAI', 'Calum-PlayAI',
+      'Celeste-PlayAI', 'Cheyenne-PlayAI', 'Chip-PlayAI', 'Cillian-PlayAI', 'Deedee-PlayAI',
+      'Fritz-PlayAI', 'Gail-PlayAI'
+    ]
+    setVoices(groqVoices)
+    if (!ttsVoice) setTtsVoice('Cheyenne-PlayAI')
+
+    // Set hardcoded languages with codes
+    const hardcodedLanguages = [
+      { value: 'english', label: 'English', code: 'en' },
+      { value: 'spanish', label: 'Spanish', code: 'es' },
+      { value: 'french', label: 'French', code: 'fr' },
+      { value: 'german', label: 'German', code: 'de' },
+    ]
+    setLanguages(hardcodedLanguages)
   }, [setTtsVoice, ttsVoice])
 
   useEffect(() => {
@@ -108,7 +115,44 @@ export default function LanguageTutor() {
     }
   }, [languages])
 
-  const startRecording = async () => {
+  const startInterruptionMonitor = (onInterrupt: () => void) => {
+    let monitoring = true
+    let audioContext: AudioContext | null = null
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      if (!monitoring) return
+      audioContext = new AudioContext()
+      const analyser = audioContext.createAnalyser()
+      const source = audioContext.createMediaStreamSource(stream)
+      source.connect(analyser)
+      analyser.fftSize = 256
+      const bufferLength = analyser.frequencyBinCount
+      const dataArray = new Uint8Array(bufferLength)
+      const check = () => {
+        if (!monitoring) {
+          stream.getTracks().forEach(track => track.stop())
+          audioContext?.close()
+          return
+        }
+        analyser.getByteFrequencyData(dataArray)
+        const volume = dataArray.reduce((a, b) => a + b) / bufferLength
+        if (volume > 20) { // speech threshold
+          onInterrupt()
+          monitoring = false
+          stream.getTracks().forEach(track => track.stop())
+          audioContext?.close()
+        } else {
+          requestAnimationFrame(check)
+        }
+      }
+      check()
+    }).catch(() => {})
+    return () => {
+      monitoring = false
+      audioContext?.close()
+    }
+  }
+
+  const startRecording = async (onSilence?: () => void) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const preferred = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
@@ -117,18 +161,42 @@ export default function LanguageTutor() {
       mediaRecorderRef.current.ondataavailable = (event) => {
         audioChunksRef.current.push(event.data)
       }
+      if (onSilence) {
+        const audioContext = new AudioContext()
+        const analyser = audioContext.createAnalyser()
+        const source = audioContext.createMediaStreamSource(stream)
+        source.connect(analyser)
+        analyser.fftSize = 256
+        const bufferLength = analyser.frequencyBinCount
+        const dataArray = new Uint8Array(bufferLength)
+        let silenceStart = Date.now()
+        const checkSilence = () => {
+          analyser.getByteFrequencyData(dataArray)
+          const volume = dataArray.reduce((a, b) => a + b) / bufferLength
+          if (volume < 10) { // silence threshold
+            if (Date.now() - silenceStart > 2000) {
+              onSilence()
+              return
+            }
+          } else {
+            silenceStart = Date.now()
+          }
+          requestAnimationFrame(checkSilence)
+        }
+        checkSilence()
+      }
       mediaRecorderRef.current.start()
       setIsRecording(true)
     } catch {
       setErrorMsg('Microphone access denied or unavailable')
-      setLogs(prev => [...prev, `[${new Date().toISOString()}] mic:error`])
+      await logEvent('mic:error')
     }
   }
 
-  const stopRecording = async () => {
+  const stopRecording = async (manualStop = false) => {
     try {
       mediaRecorderRef.current?.stop()
-      setIsRecording(false)
+      if (manualStop) setIsRecording(false)
       mediaRecorderRef.current?.addEventListener('stop', async () => {
         try {
           const audioBlob = new Blob(audioChunksRef.current, { type: recordingMimeTypeRef.current })
@@ -140,19 +208,19 @@ export default function LanguageTutor() {
           await sendMessage(text)
         } catch {
           setErrorMsg('Transcription failed')
-          setLogs(prev => [...prev, `[${new Date().toISOString()}] stt:error`])
+          await logEvent('stt:error')
         }
       })
     } catch {
       setErrorMsg('Stop recording failed')
-      setLogs(prev => [...prev, `[${new Date().toISOString()}] recording_stop:error`])
+      await logEvent('recording_stop:error')
     }
   }
 
   const sendMessage = async (text: string) => {
     if (!text || isSending) return
     const now = Date.now()
-    if (now - lastMessageTsRef.current < 1500) { setLogs(prev => [...prev, `[${new Date().toISOString()}] rate_limit:send`]); return }
+    if (now - lastMessageTsRef.current < 1500) { await logEvent('rate_limit:send'); return }
     lastMessageTsRef.current = now
     setIsSending(true)
     setErrorMsg(null)
@@ -162,7 +230,28 @@ export default function LanguageTutor() {
       const response = await generateResponseLocal(newMessages)
       const updatedMessages: Message[] = [...newMessages, { role: 'tutor', content: response }]
       setMessages(updatedMessages)
-      if (isTTSOn) { try { await playTTS(response, ttsVoice) } catch { setLogs(prev => [...prev, `[${new Date().toISOString()}] tts:error`]) } }
+      if (isTTSOn) {
+        try {
+          const audio = await playTTS(response, ttsVoice)
+          currentAudioRef.current = audio
+          audio.play()
+          const stopMonitor = startInterruptionMonitor(() => {
+            audio.pause()
+            currentAudioRef.current = null
+            stopMonitor()
+            startRecording(() => stopRecording(false))
+          })
+          audio.onended = () => {
+            stopMonitor()
+            if (isRecording) startRecording(() => stopRecording(false))
+          }
+        } catch {
+          await logEvent('tts:error')
+        }
+      } else {
+        // No TTS, restart recording immediately
+        if (isRecording) startRecording(() => stopRecording(false))
+      }
       const newFeedback = await analyzeFeedbackLocal(text)
       setFeedback([...feedback, newFeedback])
       updateProgress(text)
@@ -175,7 +264,7 @@ export default function LanguageTutor() {
       }
     } catch {
       setErrorMsg('Message send failed')
-      setLogs(prev => [...prev, `[${new Date().toISOString()}] msg_send:error`])
+      await logEvent('msg_send:error')
     } finally {
       setIsSending(false)
       setInput('')
@@ -187,11 +276,11 @@ export default function LanguageTutor() {
   }
 
   const generateResponseLocal = async (msgs: Message[]) => {
-    return generateResponseAPI(msgs, language, mode, apiProvider, { openai: openaiModel, groq: groqModel, claude: claudeModel }, systemPrompt)
+    return generateResponseAPI(msgs, language, mode, apiProvider, { openai: openaiModel, groq: groqModel }, systemPrompt)
   }
 
   const analyzeFeedbackLocal = async (text: string) => {
-    const raw = await analyzeFeedbackAPI(text, language, apiProvider, { openai: openaiModel, groq: groqModel, claude: claudeModel })
+    const raw = await analyzeFeedbackAPI(text, language, apiProvider, { openai: openaiModel, groq: groqModel })
     try {
       const parsed = JSON.parse(raw)
       const comments: string[] = Array.isArray(parsed.comments) ? parsed.comments : []
@@ -219,12 +308,12 @@ export default function LanguageTutor() {
   // playTTS imported
 
   const detectProficiencyLocal = async (msgs: Message[]) => {
-    const level = await detectProficiencyAPI(msgs, language, apiProvider, { openai: openaiModel, groq: groqModel, claude: claudeModel })
+    const level = await detectProficiencyAPI(msgs, language, apiProvider, { openai: openaiModel, groq: groqModel })
     setProficiency(level)
   }
 
   const updateGoalsAsync = async (msgs: Message[]) => {
-    const list = await suggestGoalsAPI(msgs, language, apiProvider, { openai: openaiModel, groq: groqModel, claude: claudeModel })
+    const list = await suggestGoalsAPI(msgs, language, apiProvider, { openai: openaiModel, groq: groqModel })
     if (Array.isArray(list) && list.length) {
       setGoals(list)
     }
@@ -290,7 +379,7 @@ export default function LanguageTutor() {
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <HeaderBar isTTSOn={isTTSOn} setIsTTSOn={setIsTTSOn} proficiency={proficiency} ttsVoice={ttsVoice} setTtsVoice={setTtsVoice} voices={voices} openSettings={() => setActiveTab('settings')} />
       <main className="flex-1 p-4 flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 max-w-7xl mx-auto w-full">
-        <Conversation messages={messages} input={input} setInput={setInput} onSend={sendMessage} isRecording={isRecording} onToggleMic={isRecording ? stopRecording : startRecording} isSending={isSending} scrollAreaRef={scrollAreaRef} />
+        <Conversation messages={messages} input={input} setInput={setInput} onSend={sendMessage} isRecording={isRecording} onToggleMic={isRecording ? () => stopRecording(true) : () => startRecording(() => stopRecording(false))} isSending={isSending} scrollAreaRef={scrollAreaRef} />
         <FeedbackPanel feedback={feedback} commonErrors={commonErrors} />
       </main>
       <footer className="p-4 border-t">
@@ -311,7 +400,7 @@ export default function LanguageTutor() {
             <JournalPanel journal={journal} />
           </TabsContent>
           <TabsContent value="settings">
-            <SettingsPanel apiProvider={apiProvider as 'openai' | 'groq' | 'claude'} setApiProvider={v => setApiProvider(v)} language={language} setLanguage={setLanguage} languages={languages} mode={mode} setMode={setMode} openaiModel={openaiModel} setOpenaiModel={setOpenaiModel} groqModel={groqModel} setGroqModel={setGroqModel} claudeModel={claudeModel} setClaudeModel={setClaudeModel} systemPrompt={systemPrompt} setSystemPrompt={setSystemPrompt} errorMsg={errorMsg} logs={logs} />
+            <SettingsPanel apiProvider={apiProvider as 'openai' | 'groq'} setApiProvider={v => setApiProvider(v)} language={language} setLanguage={setLanguage} languages={languages} mode={mode} setMode={setMode} openaiModel={openaiModel} setOpenaiModel={setOpenaiModel} groqModel={groqModel} setGroqModel={setGroqModel} systemPrompt={systemPrompt} setSystemPrompt={setSystemPrompt} errorMsg={errorMsg} logs={logs} />
           </TabsContent>
         </Tabs>
       </footer>

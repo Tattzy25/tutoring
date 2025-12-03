@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
 interface SettingsPanelProps {
-  apiProvider: 'openai' | 'groq' | 'claude'
-  setApiProvider: (v: 'openai' | 'groq' | 'claude') => void
+  apiProvider: 'openai' | 'groq'
+  setApiProvider: (v: 'openai' | 'groq') => void
   language: string
   setLanguage: (v: string) => void
   languages: { value: string; label: string; code?: string }[]
@@ -20,15 +20,13 @@ interface SettingsPanelProps {
   setOpenaiModel: (v: string) => void
   groqModel: string
   setGroqModel: (v: string) => void
-  claudeModel: string
-  setClaudeModel: (v: string) => void
   systemPrompt: string
   setSystemPrompt: (v: string) => void
   errorMsg: string | null
   logs?: string[]
 }
 
-export default function SettingsPanel({ apiProvider, setApiProvider, language, setLanguage, languages, mode, setMode, openaiModel, setOpenaiModel, groqModel, setGroqModel, claudeModel, setClaudeModel, systemPrompt, setSystemPrompt, errorMsg, logs }: SettingsPanelProps) {
+export default function SettingsPanel({ apiProvider, setApiProvider, language, setLanguage, languages, mode, setMode, openaiModel, setOpenaiModel, groqModel, setGroqModel, systemPrompt, setSystemPrompt, errorMsg, logs }: SettingsPanelProps) {
   const base = import.meta.env.VITE_AUDIO_API_BASE || import.meta.env.VITE_AUDIO_API_BASE_LOCAL
   const [health, setHealth] = useState<string[]>([])
 
@@ -47,15 +45,14 @@ export default function SettingsPanel({ apiProvider, setApiProvider, language, s
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Provider</Label>
-            <Select value={apiProvider} onValueChange={(v) => setApiProvider(v as typeof apiProvider)}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="Select provider" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="openai">OpenAI</SelectItem>
-                <SelectItem value="groq">Groq</SelectItem>
-                <SelectItem value="claude">Claude</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+                    <Select value={apiProvider} onValueChange={(v) => setApiProvider(v as typeof apiProvider)}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Select provider" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="openai">OpenAI</SelectItem>
+                        <SelectItem value="groq">Groq</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
           <div className="space-y-2">
             <Label>OpenAI Model</Label>
             <Input value={openaiModel} onChange={e => setOpenaiModel(e.target.value)} placeholder="gpt-4o-mini" />
@@ -64,10 +61,7 @@ export default function SettingsPanel({ apiProvider, setApiProvider, language, s
             <Label>Groq Model</Label>
             <Input value={groqModel} onChange={e => setGroqModel(e.target.value)} placeholder="openai/gpt-oss-120b" />
           </div>
-          <div className="space-y-2">
-            <Label>Claude Model</Label>
-            <Input value={claudeModel} onChange={e => setClaudeModel(e.target.value)} placeholder="claude-3-5-sonnet-latest" />
-          </div>
+                  
         </CardContent>
       </Card>
 

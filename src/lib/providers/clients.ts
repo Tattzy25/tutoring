@@ -1,7 +1,12 @@
-import OpenAI from 'openai'
-import Groq from 'groq-sdk'
-import Anthropic from '@anthropic-ai/sdk'
+export const aiBase = import.meta.env.VITE_AI_API_BASE || ''
 
-export const openai = new OpenAI({ apiKey: import.meta.env.VITE_OPENAI_API_KEY, dangerouslyAllowBrowser: true })
-export const groq = new Groq({ apiKey: import.meta.env.VITE_GROQ_API_KEY, dangerouslyAllowBrowser: true })
-export const anthropic = new Anthropic({ apiKey: import.meta.env.VITE_ANTHROPIC_API_KEY, dangerouslyAllowBrowser: true })
+export async function aiPost<T>(path: string, body: unknown): Promise<T> {
+  if (!aiBase) throw new Error('AI API base not configured')
+  const res = await fetch(`${aiBase}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(`AI request failed: ${res.status}`)
+  return res.json() as Promise<T>
+}
