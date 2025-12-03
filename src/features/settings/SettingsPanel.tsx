@@ -24,9 +24,11 @@ interface SettingsPanelProps {
   setSystemPrompt: (v: string) => void
   errorMsg: string | null
   logs?: string[]
+  theme: { background: string; primary: string; accent: string; text: string; borderRadius: string }
+  setTheme: (theme: { background: string; primary: string; accent: string; text: string; borderRadius: string }) => void
 }
 
-export default function SettingsPanel({ apiProvider, setApiProvider, language, setLanguage, languages, mode, setMode, openaiModel, setOpenaiModel, groqModel, setGroqModel, systemPrompt, setSystemPrompt, errorMsg, logs }: SettingsPanelProps) {
+export default function SettingsPanel({ apiProvider, setApiProvider, language, setLanguage, languages, mode, setMode, openaiModel, setOpenaiModel, groqModel, setGroqModel, systemPrompt, setSystemPrompt, errorMsg, logs, theme, setTheme }: SettingsPanelProps) {
   const base = import.meta.env.VITE_AUDIO_API_BASE || import.meta.env.VITE_AUDIO_API_BASE_LOCAL
   const [health, setHealth] = useState<string[]>([])
 
@@ -82,6 +84,34 @@ export default function SettingsPanel({ apiProvider, setApiProvider, language, s
           <div className="flex items-center gap-2">
             <Label htmlFor="mode">Structured Mode</Label>
             <Switch id="mode" checked={mode === 'structured'} onCheckedChange={c => setMode(c ? 'structured' : 'casual')} />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="md:col-span-2">
+        <CardHeader>UI Theme</CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label>Background</Label>
+              <Input type="color" value={theme.background} onChange={e => setTheme({ ...theme, background: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Primary</Label>
+              <Input type="color" value={theme.primary} onChange={e => setTheme({ ...theme, primary: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Accent</Label>
+              <Input type="color" value={theme.accent} onChange={e => setTheme({ ...theme, accent: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Text</Label>
+              <Input type="color" value={theme.text} onChange={e => setTheme({ ...theme, text: e.target.value })} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Border Radius (px)</Label>
+            <Input type="number" min="0" max="20" value={parseInt(theme.borderRadius)} onChange={e => setTheme({ ...theme, borderRadius: e.target.value + 'px' })} />
           </div>
         </CardContent>
       </Card>

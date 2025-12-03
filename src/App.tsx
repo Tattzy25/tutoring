@@ -31,12 +31,40 @@ export default function LanguageTutor() {
   const [journal, setJournal] = useLocalStorageState<JournalEntry[]>('journal', [])
   const [proficiency, setProficiency] = useLocalStorageState('proficiency', 'beginner')
   const [isRecording, setIsRecording] = useState(false)
-  const [isTTSOn, setIsTTSOn] = useState(true)
+  const [isTTSOn] = useState(true)
   const [apiProvider, setApiProvider] = useLocalStorageState<'openai' | 'groq'>('apiProvider', 'openai')
-  const [ttsVoice, setTtsVoice] = useLocalStorageState('ttsVoice', import.meta.env.VITE_TTS_DEFAULT_VOICE || '')
-  const [voices, setVoices] = useState<string[]>([])
+  const [ttsVoice] = useLocalStorageState('ttsVoice', import.meta.env.VITE_TTS_DEFAULT_VOICE || '')
   const [openaiModel, setOpenaiModel] = useLocalStorageState('openaiModel', import.meta.env.VITE_OPENAI_MODEL || '')
   const [groqModel, setGroqModel] = useLocalStorageState('groqModel', import.meta.env.VITE_GROQ_MODEL || '')
+  const [theme, setTheme] = useLocalStorageState('theme', {
+    background: '#000000',
+    primary: '#ffffff',
+    accent: '#ffff00',
+    text: '#ffffff',
+    borderRadius: '8px'
+  })
+  const [isDark, setIsDark] = useLocalStorageState('isDark', true)
+
+  const lightTheme = {
+    background: '#ffffff',
+    primary: '#3b82f6',
+    accent: '#f59e0b',
+    text: '#000000',
+    borderRadius: '8px'
+  }
+
+  const darkTheme = {
+    background: '#000000',
+    primary: '#ffffff',
+    accent: '#ffff00',
+    text: '#ffffff',
+    borderRadius: '8px'
+  }
+
+  const toggleTheme = () => {
+    setIsDark(!isDark)
+    setTheme(isDark ? lightTheme : darkTheme)
+  }
   
   const [systemPrompt, setSystemPrompt] = useLocalStorageState('systemPrompt', import.meta.env.VITE_SYSTEM_PROMPT || `You are a helpful language tutor. When responding to learners' questions or content, provide explanations and guidance that are concise, accurate, and easy to understand.
 
@@ -88,15 +116,6 @@ Output: The correct form is "He went to school." "Went" is the past tense of "go
   }
 
   useEffect(() => {
-    // Set hardcoded voices for Groq playai-tts
-    const groqVoices = [
-      'Arista-PlayAI', 'Atlas-PlayAI', 'Basil-PlayAI', 'Briggs-PlayAI', 'Calum-PlayAI',
-      'Celeste-PlayAI', 'Cheyenne-PlayAI', 'Chip-PlayAI', 'Cillian-PlayAI', 'Deedee-PlayAI',
-      'Fritz-PlayAI', 'Gail-PlayAI'
-    ]
-    setVoices(groqVoices)
-    if (!ttsVoice) setTtsVoice('Cheyenne-PlayAI')
-
     // Set hardcoded languages with codes
     const hardcodedLanguages = [
       { value: 'english', label: 'English', code: 'en' },
@@ -105,7 +124,7 @@ Output: The correct form is "He went to school." "Went" is the past tense of "go
       { value: 'german', label: 'German', code: 'de' },
     ]
     setLanguages(hardcodedLanguages)
-  }, [setTtsVoice, ttsVoice])
+  }, [])
 
   useEffect(() => {
     if (!languages.length) return
@@ -114,6 +133,14 @@ Output: The correct form is "He went to school." "Went" is the past tense of "go
       if (matched) setLanguage(matched)
     }
   }, [languages])
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--background', theme.background)
+    document.documentElement.style.setProperty('--foreground', theme.text)
+    document.documentElement.style.setProperty('--primary', theme.primary)
+    document.documentElement.style.setProperty('--accent', theme.accent)
+    document.documentElement.style.setProperty('--radius', theme.borderRadius)
+  }, [theme])
 
   const startInterruptionMonitor = (onInterrupt: () => void) => {
     let monitoring = true
@@ -377,7 +404,7 @@ Output: The correct form is "He went to school." "Went" is the past tense of "go
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
-      <HeaderBar isTTSOn={isTTSOn} setIsTTSOn={setIsTTSOn} proficiency={proficiency} ttsVoice={ttsVoice} setTtsVoice={setTtsVoice} voices={voices} openSettings={() => setActiveTab('settings')} />
+      <HeaderBar proficiency={proficiency} isDark={isDark} toggleTheme={toggleTheme} openSettings={() => setActiveTab('settings')} />
       <main className="flex-1 p-4 flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 max-w-7xl mx-auto w-full">
         <Conversation messages={messages} input={input} setInput={setInput} onSend={sendMessage} isRecording={isRecording} onToggleMic={isRecording ? () => stopRecording(true) : () => startRecording(() => stopRecording(false))} isSending={isSending} scrollAreaRef={scrollAreaRef} />
         <FeedbackPanel feedback={feedback} commonErrors={commonErrors} />
@@ -400,7 +427,7 @@ Output: The correct form is "He went to school." "Went" is the past tense of "go
             <JournalPanel journal={journal} />
           </TabsContent>
           <TabsContent value="settings">
-            <SettingsPanel apiProvider={apiProvider as 'openai' | 'groq'} setApiProvider={v => setApiProvider(v)} language={language} setLanguage={setLanguage} languages={languages} mode={mode} setMode={setMode} openaiModel={openaiModel} setOpenaiModel={setOpenaiModel} groqModel={groqModel} setGroqModel={setGroqModel} systemPrompt={systemPrompt} setSystemPrompt={setSystemPrompt} errorMsg={errorMsg} logs={logs} />
+            <SettingsPanel apiProvider={apiProvider as 'openai' | 'groq'} setApiProvider={v => setApiProvider(v)} language={language} setLanguage={setLanguage} languages={languages} mode={mode} setMode={setMode} openaiModel={openaiModel} setOpenaiModel={setOpenaiModel} groqModel={groqModel} setGroqModel={setGroqModel} systemPrompt={systemPrompt} setSystemPrompt={setSystemPrompt} errorMsg={errorMsg} logs={logs} theme={theme} setTheme={setTheme} />
           </TabsContent>
         </Tabs>
       </footer>
